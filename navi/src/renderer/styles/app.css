@@ -1,0 +1,72 @@
+body {
+    background-color: #0e1117;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.app-container {
+    background: #1a1f27;
+    border-radius: 16px;
+    padding: 24px;
+    width: 400px;
+    text-align: center;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+}
+
+.app-title {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.command-form {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.command-input {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+}
+
+.submit-btn {
+    background: #4AA3F0;
+    border: none;
+    color: white;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+.submit-btn:hover {
+    background: #358ed7;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.command-display {
+    margin-top: 1rem;
+    color: #aaa;
+    font-style: italic;
+}
