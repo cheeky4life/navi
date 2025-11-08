@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NAVI Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        h1 {
+            font-size: 4rem;
+            margin: 0;
+            background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .card {
+            margin-top: 30px;
+            padding: 30px;
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 16px;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <h1>◆ NAVI</h1>
+    <div class="card">
+        <h2>🎉 If you see this, the HTML is loading!</h2>
+        <p id="test">Testing JavaScript...</p>
+    </div>
+    
+    <script>
+        console.log("=== NAVI Test Page ===");
+        console.log("HTML loaded successfully!");
+        console.log("Window:", window);
+        console.log("Document:", document);
+        
+        document.getElementById('test').innerHTML = '✅ JavaScript is working!';
+        document.getElementById('test').style.color = '#10b981';
+        document.getElementById('test').style.fontSize = '1.2rem';
+        document.getElementById('test').style.fontWeight = 'bold';
+    </script>
+</body>
+</html>

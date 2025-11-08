@@ -10,10 +10,16 @@ if (started) {
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1000,
+    height: 700,
+    minWidth: 600,
+    minHeight: 500,
+    backgroundColor: '#0f172a',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false,
     },
   });
 
@@ -26,6 +32,13 @@ const createWindow = () => {
 
   // Open the DevTools.
   mainWindow.webContents.openDevTools();
+  
+  // Suppress autofill console warnings
+  mainWindow.webContents.on('console-message', (event, level, message) => {
+    if (message.includes('Autofill')) {
+      event.preventDefault();
+    }
+  });
 };
 
 // This method will be called when Electron has finished
