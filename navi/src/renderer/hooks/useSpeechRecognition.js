@@ -282,7 +282,7 @@ export function useSpeechRecognition({
             // Silence timer will be set up in onstart handler
         } catch (err) {
             console.error('Error starting speech recognition:', err);
-            setError('Failed to start speech recognition. Please try again.');
+            setError('Faile to start speech recognition. Please try again.');
             isListeningRef.current = false;
             setIsListening(false);
         }
