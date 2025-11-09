@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import LoginPage from "./components/LoginPage";
@@ -26,5 +27,20 @@ export default function App() {
         <AuthProvider>
             <AppContent />
         </AuthProvider>
+=======
+import React, { useState } from "react";
+import WindowControls from "./components/WindowControls.jsx";
+
+export default function App() {
+    const [outputText, setOutputText] = useState("Output text will go here");
+
+    return (
+        <div className="output-bar">
+            <WindowControls />
+            <div className="output-content">
+                <p>{outputText}</p>
+            </div>
+        </div>
+>>>>>>> 6dd3a91a501c540a441e75ad1f7c31ac8c1e8601
     );
 }

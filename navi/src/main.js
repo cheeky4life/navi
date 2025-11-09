@@ -9,6 +9,7 @@ if (started) {
 }
 
 const createWindow = () => {
+<<<<<<< HEAD
   // Get primary display dimensions
   const { screen } = require('electron');
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -24,6 +25,28 @@ const createWindow = () => {
     frame: false,
     alwaysOnTop: true,
     hasShadow: false,
+=======
+  const { screen } = require('electron');
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+  
+  const windowWidth = Math.floor(screenWidth * 0.6); // 60% of screen width
+  const windowHeight = 80; // Thin bar height
+  const x = Math.floor((screenWidth - windowWidth) / 2); // Center horizontally
+  const y = Math.floor(screenHeight * 0.05); // 5% from top
+  
+  // Create the browser window.
+  const mainWindow = new BrowserWindow({
+    width: windowWidth,
+    height: windowHeight,
+    x: x,
+    y: y,
+    transparent: true,
+    frame: false,
+    backgroundColor: '#00000000',
+    alwaysOnTop: true,
+    resizable: false,
+>>>>>>> 6dd3a91a501c540a441e75ad1f7c31ac8c1e8601
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -83,6 +106,27 @@ const createWindow = () => {
     }
   });
 
+<<<<<<< HEAD
+=======
+  // Window control handlers
+  ipcMain.on('window-minimize', () => {
+    mainWindow.minimize();
+  });
+
+  ipcMain.on('window-maximize', () => {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  });
+
+  ipcMain.on('window-close', () => {
+    mainWindow.close();
+  });
+
+  return mainWindow;
+>>>>>>> 6dd3a91a501c540a441e75ad1f7c31ac8c1e8601
 };
 
 // IPC handler for mouse events

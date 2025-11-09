@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 const { contextBridge, ipcRenderer } = require('electron');
 
 // Expose protected methods that allow the renderer process to use
@@ -17,3 +18,15 @@ contextBridge.exposeInMainWorld(
     }
 }
 );
+=======
+// See the Electron documentation for details on how to use preload scripts:
+// https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
+
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('electron', {
+    minimize: () => ipcRenderer.send('window-minimize'),
+    maximize: () => ipcRenderer.send('window-maximize'),
+    close: () => ipcRenderer.send('window-close'),
+});
+>>>>>>> 6dd3a91a501c540a441e75ad1f7c31ac8c1e8601
