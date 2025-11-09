@@ -4,11 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { GlassPanel, GlassButton, GlassCard } from './GlassUI.jsx';
 
 export default function UserSettingsModal() {
-    const { 
-        theme, 
-        toggleTheme, 
-        activeWidgets, 
-        addWidget, 
+    const {
+        theme,
+        toggleTheme,
+        activeWidgets,
+        addWidget,
         removeWidget,
         showSettings,
         setShowSettings,
@@ -25,7 +25,7 @@ export default function UserSettingsModal() {
     );
 
     return (
-        <div 
+        <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
             onClick={(e) => {
                 if (e.target === e.currentTarget) {
@@ -74,7 +74,7 @@ export default function UserSettingsModal() {
                         />
                     </div>
 
-                    {/* Content Area */}
+                    {/* Content Are */}
                     <div className="flex-1 p-6 overflow-y-auto">
                         {activeSection === 'account' && <AccountSection user={user} />}
                         {activeSection === 'widgets' && (
@@ -90,7 +90,7 @@ export default function UserSettingsModal() {
                             <ThemeSection theme={theme} toggleTheme={toggleTheme} />
                         )}
                         {activeSection === 'voice' && (
-                            <VoiceCommandsSection 
+                            <VoiceCommandsSection
                                 onViewCommands={() => {
                                     setShowVoiceCommands(true);
                                     setShowSettings(false);
@@ -111,8 +111,8 @@ function NavButton({ active, onClick, icon, label }) {
             onClick={onClick}
             className={`
                 w-full p-3 rounded-lg text-left transition-all
-                ${active 
-                    ? 'bg-white/20 text-white' 
+                ${active
+                    ? 'bg-white/20 text-white'
                     : 'text-white/60 hover:bg-white/10 hover:text-white/80'
                 }
             `}
@@ -145,17 +145,17 @@ function AccountSection({ user }) {
 }
 
 // Widget Management Section
-function WidgetManagementSection({ 
-    activeWidgets, 
-    availableWidgets, 
-    addWidget, 
+function WidgetManagementSection({
+    activeWidgets,
+    availableWidgets,
+    addWidget,
     removeWidget,
-    widgetsConfig 
+    widgetsConfig
 }) {
     return (
         <div className="space-y-6">
             <h3 className="text-xl font-semibold text-white/90 mb-4">Widget Management</h3>
-            
+
             {/* Active Widgets */}
             <div>
                 <h4 className="text-lg font-medium text-white/80 mb-3">Active Widgets</h4>
@@ -218,11 +218,10 @@ function WidgetItem({ widgetId, widgetName, widgetIcon, isActive, onToggle }) {
             </div>
             <GlassButton
                 onClick={onToggle}
-                className={`px-4 py-2 ${
-                    isActive 
-                        ? 'bg-red-500/20 hover:bg-red-500/30 text-red-300' 
+                className={`px-4 py-2 ${isActive
+                        ? 'bg-red-500/20 hover:bg-red-500/30 text-red-300'
                         : 'bg-green-500/20 hover:bg-green-500/30 text-green-300'
-                }`}
+                    }`}
             >
                 {isActive ? 'Remove' : 'Add'}
             </GlassButton>
