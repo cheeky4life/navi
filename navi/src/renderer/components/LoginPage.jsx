@@ -70,7 +70,18 @@ export default function LoginPage() {
                 {/* Error Message */}
                 {error && (
                     <GlassCard className="mb-6 p-4 bg-red-500/10 border-red-500/30">
-                        <p className="text-red-300 text-sm text-center">{error}</p>
+                        <p className="text-red-300 text-sm text-center mb-2">{error}</p>
+                        {error.includes('connection is not enabled') && (
+                            <div className="text-red-200 text-xs text-center mt-2 space-y-1">
+                                <p>To fix this:</p>
+                                <ol className="list-decimal list-inside space-y-1 text-left max-w-md mx-auto">
+                                    <li>Go to Auth0 Dashboard → Authentication → Social</li>
+                                    <li>Enable Google connection</li>
+                                    <li>Make sure it's enabled for your application</li>
+                                    <li>Configure Google OAuth credentials if needed</li>
+                                </ol>
+                            </div>
+                        )}
                     </GlassCard>
                 )}
 

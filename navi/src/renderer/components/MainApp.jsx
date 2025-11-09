@@ -1,20 +1,32 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { GlassPanel, GlassButton, GlassCard, PulseIndicator } from "./GlassUI.jsx";
 import { useAuth } from "../contexts/AuthContext";
-import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
+import { useSettings } from "../contexts/SettingsContext";
+import { useAudioSpeechRecognition } from "../hooks/useAudioSpeechRecognition";
+import { useVoiceAIWebSocket } from "../hooks/useVoiceAIWebSocket";
+import { useTextToSpeech } from "../hooks/useTextToSpeech";
 import { getFileIcon, formatFileSize, getRelativeTime } from "../utils/documentUtils";
 import { parseCommand, executeCommand } from "../utils/commandParser";
+import { getGeminiResponse } from "../utils/geminiApi.js";
+import UserSettingsModal from "./UserSettingsModal";
+import VoiceCommandListPopup from "./VoiceCommandListPopup";
+import DraggableWidget from "./DraggableWidget";
+import DocumentUploadWidget from "./widgets/DocumentUploadWidget";
+import EmailConfigWidget from "./widgets/EmailConfigWidget";
+import QuickNotesWidget from "./widgets/QuickNotesWidget";
+import AIStatusMonitorWidget from "./widgets/AIStatusMonitorWidget";
 import "./../styles/app.css";
 
 export default function MainApp() {
     const { user, logout } = useAuth();
+    const { activeWidgets, setShowSettings, removeWidget } = useSettings();
     const [status, setStatus] = useState("Idle");
     const [command, setCommand] = useState("");
     const [response, setResponse] = useState("");
     const [history, setHistory] = useState([]);
     const [isVideoActive, setIsVideoActive] = useState(false);
-    const [showDocuments, setShowDocuments] = useState(true);
-    const [showQuickSearch, setShowQuickSearch] = useState(true);
+    // showDocuments is now managed by activeWidgets in SettingsContext
+    const showDocuments = activeWidgets.some(w => w.id === 'document-upload');
     const [documents, setDocuments] = useState([]);
     const [selectedDocument, setSelectedDocument] = useState(null);
 
@@ -89,15 +101,31 @@ export default function MainApp() {
         }
     };
 
-    // Speech recognition hook
+    // Text-to-speech for AI responses
+    const { speak: speakText, stop: stopSpeaking, isAvailable: ttsAvailable } = useTextToSpeech();
+
+    // WebSocket connection for real-time voice AI
+    const {
+        isConnected: isWebSocketConnected,
+        isConnecting: isWebSocketConnecting,
+        error: websocketError,
+        aiResponse: websocketAIResponse,
+        isStreaming: isAIStreaming,
+        sendTranscript: sendTranscriptToServer,
+        clearResponse: clearWebSocketResponse,
+    } = useVoiceAIWebSocket({ enabled: true });
+
+    // Audio-based speech recognition hook (streams audio to Python backend)
     const {
         isListening,
         startListening,
         stopListening,
         error: speechError,
         transcript,
-    } = useSpeechRecognition({
+    } = useAudioSpeechRecognition({
+        enabled: true,
         onTranscript: (transcript, isInterim) => {
+            console.log('🎤 Received transcript:', transcript, 'isInterim:', isInterim);
             // Update command in real-time as user speaks
             setCommand(transcript);
             if (isInterim) {
@@ -107,24 +135,75 @@ export default function MainApp() {
             }
         },
         onFinalTranscript: (finalTranscript) => {
-            // Final transcript received
+            // Final transcript received - send to WebSocket server for AI response
+            console.log('🔊 FINAL TRANSCRIPT RECEIVED:', finalTranscript);
             setCommand(finalTranscript);
             setStatus("Processing...");
+            
+            // Send to WebSocket server if connected, otherwise fallback to local processing
+            if (isWebSocketConnected && finalTranscript.trim()) {
+                console.log('📤 Sending final transcript to WebSocket server:', finalTranscript);
+                sendTranscriptToServer(finalTranscript, true);
+                clearWebSocketResponse(); // Clear previous response
+            } else if (!isWebSocketConnected) {
+                // Fallback: process locally if WebSocket not available
+                console.log('⚠️ WebSocket not connected, processing locally:', finalTranscript);
+                // The processCommand will be called by the useEffect below
+            } else {
+                console.log('⚠️ Final transcript is empty or WebSocket not ready');
+            }
         },
-        silenceTimeout: 3000, // 3 seconds of silence before auto-stop
-        language: 'en-US',
     });
 
     // Handle mic button toggle
-    const handleMicToggle = () => {
-        if (isListening) {
-            stopListening();
-            setStatus("Idle");
-        } else {
-            setCommand(""); // Clear previous command
-            lastProcessedCommandRef.current = ''; // Reset processed command tracking
-            startListening();
-            setStatus("Listening...");
+    const handleMicToggle = async () => {
+        try {
+            if (isListening) {
+                console.log('Stopping listening...');
+                stopListening();
+                setStatus("Processing...");
+                // Process the final transcript if available
+                if (transcript) {
+                    console.log('Processing final transcript:', transcript);
+                    processCommand(transcript);
+                }
+            } else {
+                console.log('Starting listening...');
+                setCommand(""); // Clear previous command
+                setResponse(""); // Clear previous response
+                clearWebSocketResponse(); // Clear WebSocket response
+                lastProcessedCommandRef.current = ''; // Reset processed command tracking
+                
+                // Check WebSocket connection status
+                if (!isWebSocketConnected && !isWebSocketConnecting) {
+                    setStatus("Connecting to AI server...");
+                } else if (isWebSocketConnecting) {
+                    setStatus("Connecting to AI server...");
+                } else {
+                    setStatus("Starting microphone...");
+                }
+
+                // Start listening - the hook will handle microphone access
+                // Don't request permission here - let the hook handle it
+                // Speech recognition works independently of WebSocket connection
+                try {
+                    startListening();
+                    // Always set to listening - WebSocket is optional
+                    setStatus("Listening...");
+                } catch (err) {
+                    console.error('Error starting listening:', err);
+                    let errorMsg = "Failed to start listening";
+                    if (err.message) {
+                        errorMsg = err.message;
+                    }
+                    setStatus(errorMsg);
+                    setResponse(errorMsg);
+                }
+            }
+        } catch (error) {
+            console.error('Error in handleMicToggle:', error);
+            setStatus("Error: " + error.message);
+            setResponse("Error: " + error.message);
         }
     };
 
@@ -134,58 +213,101 @@ export default function MainApp() {
             // Remove "Navi" prefix if present for cleaner parsing
             const cleanedCommand = commandText.replace(/^navi\s+/i, '').trim();
 
-            // Parse the command
+            if (!cleanedCommand) {
+                setStatus("Idle");
+                return;
+            }
+
+            // Update status to processing
+            setStatus("Processing...");
+            setResponse(""); // Clear previous response
+
+            // Parse command for document operations
             const parsedCommand = parseCommand(cleanedCommand);
 
-            // Update status based on command
-            if (parsedCommand.action) {
-                setStatus(`Processing: ${parsedCommand.action}...`);
-            }
+            // Check if this is a document operation command
+            const isDocumentCommand = parsedCommand.action && (
+                parsedCommand.action === 'update' ||
+                parsedCommand.action === 'send' ||
+                parsedCommand.action === 'update_and_send'
+            );
 
-            // Execute the command
-            const onProgress = (message) => {
-                setStatus(message);
-            };
+            let aiResponse = '';
+            let commandResult = null;
 
-            const results = await executeCommand(parsedCommand, documents, onProgress);
+            // If it's a document command, execute it and get AI feedback
+            if (isDocumentCommand) {
+                try {
+                    // Execute the command
+                    const results = await executeCommand(parsedCommand, documents, (progress) => {
+                        setStatus(progress);
+                    });
 
-            // Format response - combine results for chained commands
-            let responseText = '';
-            if (results.length > 0) {
-                const successResults = results.filter(r => r.success);
-                const errorResults = results.filter(r => !r.success);
+                    commandResult = results[0];
 
-                if (errorResults.length > 0) {
-                    // If there are errors, show the error message
-                    responseText = errorResults[0].message || 'Failed to execute command.';
-                } else if (successResults.length > 0) {
-                    // Combine success messages for chained commands
-                    if (results.length > 1) {
-                        responseText = results.map(r => r.message).filter(Boolean).join(' ');
-                    } else {
-                        responseText = results[0].message || 'Command executed successfully.';
-                    }
-                } else {
-                    responseText = "Command processed.";
+                    // Get AI response with context about the command execution
+                    const context = {
+                        documents,
+                        selectedDocument,
+                        commandResult,
+                        parsedCommand,
+                    };
+
+                    const commandSummary = commandResult.success
+                        ? `Successfully executed: ${commandResult.message}`
+                        : `Command failed: ${commandResult.message}`;
+
+                    aiResponse = await getGeminiResponse(
+                        `User said: "${cleanedCommand}". ${commandSummary}. Provide a helpful, concise response confirming what was done or suggesting alternatives if it failed.`,
+                        context
+                    );
+                } catch (cmdError) {
+                    console.error('Error executing command:', cmdError);
+                    // Still get AI response about the error
+                    aiResponse = await getGeminiResponse(
+                        `User requested: "${cleanedCommand}". I encountered an error: ${cmdError.message}. Provide a helpful error message.`,
+                        { documents, selectedDocument }
+                    );
                 }
             } else {
-                responseText = "I understood your command. Processing...";
+                // General query - get AI response with full context
+                aiResponse = await getGeminiResponse(cleanedCommand, {
+                    documents,
+                    selectedDocument,
+                });
             }
 
-            setResponse(responseText);
+            setResponse(aiResponse);
             setStatus("Done");
+
+            // Speak the AI response
+            if (aiResponse.trim() && ttsAvailable) {
+                console.log('🔊 Speaking AI response...');
+                speakText(aiResponse, {
+                    rate: 1.0,
+                    pitch: 1.0,
+                    volume: 0.8,
+                    lang: 'en-US',
+                    onEnd: () => {
+                        console.log('🔊 Finished speaking AI response');
+                    }
+                });
+            }
 
             // Update history with response
             setHistory(prev => {
                 const updated = [...prev];
                 if (updated.length > 0) {
-                    updated[updated.length - 1].response = responseText;
+                    updated[updated.length - 1].response = aiResponse;
+                    if (commandResult) {
+                        updated[updated.length - 1].commandResult = commandResult;
+                    }
                 }
                 return updated;
             });
         } catch (error) {
             console.error('Error processing command:', error);
-            const errorMessage = "I encountered an error processing your command. Please try again.";
+            const errorMessage = error.message || "I apologize, but I encountered an error processing your request. Please try again.";
             setResponse(errorMessage);
             setStatus("Error");
 
@@ -194,13 +316,46 @@ export default function MainApp() {
                 const updated = [...prev];
                 if (updated.length > 0) {
                     updated[updated.length - 1].response = errorMessage;
+                    updated[updated.length - 1].error = true;
                 }
                 return updated;
             });
         }
-    }, [documents]);
+    }, [documents, selectedDocument]);
+
+    // Track last spoken response to prevent duplicate TTS
+    const lastSpokenResponseRef = useRef('');
+
+    // Update response from WebSocket AI and speak when complete
+    useEffect(() => {
+        if (websocketAIResponse) {
+            setResponse(websocketAIResponse);
+            if (isAIStreaming) {
+                setStatus("AI responding...");
+            } else {
+                setStatus("Done");
+                // Speak the AI response when it's complete (only once per response)
+                if (websocketAIResponse.trim() && 
+                    ttsAvailable && 
+                    lastSpokenResponseRef.current !== websocketAIResponse) {
+                    lastSpokenResponseRef.current = websocketAIResponse;
+                    console.log('🔊 Speaking AI response...');
+                    speakText(websocketAIResponse, {
+                        rate: 1.0,
+                        pitch: 1.0,
+                        volume: 0.8,
+                        lang: 'en-US',
+                        onEnd: () => {
+                            console.log('🔊 Finished speaking AI response');
+                        }
+                    });
+                }
+            }
+        }
+    }, [websocketAIResponse, isAIStreaming, ttsAvailable, speakText]);
 
     // Handle command processing (when speech recognition stops)
+    // Only process document commands locally, let WebSocket handle AI responses
     useEffect(() => {
         // When listening stops and we have a command that hasn't been processed yet
         if (!isListening && command.trim() && command.trim() !== lastProcessedCommandRef.current) {
@@ -217,10 +372,27 @@ export default function MainApp() {
             setHistory(prev => [...prev, newEntry]);
             setStatus("Processing...");
 
-            // Parse and execute command
-            processCommand(commandToProcess);
+            // Parse command to check if it's a document operation
+            const parsedCommand = parseCommand(commandToProcess.replace(/^navi\s+/i, '').trim());
+            const isDocumentCommand = parsedCommand.action && (
+                parsedCommand.action === 'update' ||
+                parsedCommand.action === 'send' ||
+                parsedCommand.action === 'update_and_send'
+            );
+
+            // Only process document commands locally, WebSocket handles AI responses
+            if (isDocumentCommand) {
+                processCommand(commandToProcess);
+            } else if (isWebSocketConnected) {
+                // WebSocket will handle the AI response
+                // Just wait for it to come through
+                setStatus("Waiting for AI response...");
+            } else {
+                // Fallback to local processing if WebSocket not connected
+                processCommand(commandToProcess);
+            }
         }
-    }, [isListening, command, processCommand]);
+    }, [isListening, command, processCommand, isWebSocketConnected]);
 
     // Show speech recognition errors
     useEffect(() => {
@@ -231,14 +403,46 @@ export default function MainApp() {
         }
     }, [speechError]);
 
+    // Show WebSocket connection errors
+    useEffect(() => {
+        if (websocketError) {
+            console.error('WebSocket error:', websocketError);
+            // Don't override status if actively listening
+            if (!isListening) {
+                setStatus("Connection Error");
+            }
+        }
+    }, [websocketError, isListening]);
+
+    // Handle voice commands
+    useEffect(() => {
+        if (command.toLowerCase().includes('open settings')) {
+            setShowSettings(true);
+        } else if (command.toLowerCase().includes('scroll down')) {
+            window.scrollBy(0, 200);
+        } else if (command.toLowerCase().includes('scroll up')) {
+            window.scrollBy(0, -200);
+        } else if (command.toLowerCase().includes('go home')) {
+            // Navigate to home/dashboard if you have routing
+            console.log('Navigate to home');
+        }
+    }, [command, setShowSettings]);
+
     return (
         <div className="app-container interactive-area" data-main-app>
+            {/* Settings Modal */}
+            <UserSettingsModal />
+
+            {/* Voice Commands Popup */}
+            <VoiceCommandListPopup />
+
             {/* User menu in top right */}
             <div className="fixed top-6 right-6 z-50">
                 <div className="relative">
                     <GlassButton
-                        onClick={() => { }}
+                        onClick={() => setShowSettings(true)}
                         className="flex items-center gap-2 px-4 py-2"
+                        title="Open Settings"
                     >
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center border border-white/20">
                             {user?.avatar ? (
@@ -248,108 +452,62 @@ export default function MainApp() {
                             )}
                         </div>
                         <span className="text-white/90 text-sm">{user?.name || 'User'}</span>
-                        <span className="text-white/40">▼</span>
+                        <span className="text-white/40">⚙️</span>
                     </GlassButton>
-                    {/* Dropdown menu - could be expanded later */}
                 </div>
             </div>
 
-            {/* Left side panels */}
-            <div className="fixed left-6 top-24 w-80 flex flex-col gap-4">
-                {showDocuments && (
-                    <GlassPanel className="h-[400px]">
-                        <div className="flex justify-between items-center p-4 border-b border-white/20">
-                            <h2 className="text-white/90 font-medium">Documents</h2>
-                            <div className="flex gap-2">
-                                <GlassButton
-                                    onClick={handleAddDocument}
-                                    className="w-8 h-8 p-0 flex items-center justify-center hover:bg-green-500/20 transition-colors"
-                                    title="Add document"
-                                >
-                                    <span className="text-lg">+</span>
-                                </GlassButton>
-                                <GlassButton
-                                    onClick={() => setShowDocuments(false)}
-                                    className="w-8 h-8 p-0 flex items-center justify-center hover:bg-red-500/20 transition-colors"
-                                    title="Close panel"
-                                >
-                                    <span className="text-lg">×</span>
-                                </GlassButton>
-                            </div>
-                        </div>
-                        <div className="p-4 space-y-2 overflow-y-auto max-h-[332px]">
-                            {documents.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-64 text-center">
-                                    <div className="text-4xl mb-2">📁</div>
-                                    <p className="text-white/60 text-sm mb-2">No documents yet</p>
-                                    <p className="text-white/40 text-xs">Click + to add a document</p>
-                                </div>
-                            ) : (
-                                documents.map((doc) => (
-                                    <div
-                                        key={doc.id}
-                                        className="group"
-                                    >
-                                        <GlassCard
-                                            className={`cursor-pointer transition-all hover:bg-white/15 ${selectedDocument?.id === doc.id ? 'ring-2 ring-blue-500/50 bg-white/10' : ''
-                                                }`}
-                                            onClick={() => setSelectedDocument(doc)}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-2xl flex-shrink-0">{getFileIcon(doc.name)}</span>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-white/90 text-sm font-medium truncate" title={doc.name}>
-                                                        {doc.name}
-                                                    </p>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <p className="text-white/60 text-xs">
-                                                            {getRelativeTime(new Date(doc.addedAt))}
-                                                        </p>
-                                                        {doc.size > 0 && (
-                                                            <>
-                                                                <span className="text-white/40">•</span>
-                                                                <p className="text-white/60 text-xs">
-                                                                    {formatFileSize(doc.size)}
-                                                                </p>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleRemoveDocument(doc.id);
-                                                    }}
-                                                    className="opacity-0 group-hover:opacity-100 hover:bg-red-500/20 rounded p-1 transition-all text-white/60 hover:text-red-400 flex-shrink-0 w-6 h-6 flex items-center justify-center"
-                                                    title="Remove document"
-                                                >
-                                                    <span className="text-lg leading-none">×</span>
-                                                </button>
-                                            </div>
-                                        </GlassCard>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </GlassPanel>
-                )}
+            {/* Render Active Widgets as Draggable */}
+            {activeWidgets.map(widget => {
 
-                {showQuickSearch && (
-                    <GlassPanel className="h-[300px]">
-                        <div className="flex justify-between items-center p-4 border-b border-white/20">
-                            <h2 className="text-white/90 font-medium">Quick Search</h2>
-                            <GlassButton onClick={() => setShowQuickSearch(false)}>×</GlassButton>
-                        </div>
-                        <div className="p-4">
-                            <GlassButton className="w-full mb-4">
-                                <span className="mr-2">✨</span>
-                                Tap to ask
-                            </GlassButton>
-                            {/* Quick search content */}
-                        </div>
-                    </GlassPanel>
-                )}
-            </div>
+                if (widget.id === 'document-upload') {
+                    return (
+                        <DraggableWidget key={widget.id} widgetId={widget.id}>
+                            <DocumentUploadWidget
+                                documents={documents}
+                                selectedDocument={selectedDocument}
+                                onAddDocument={handleAddDocument}
+                                onRemoveDocument={handleRemoveDocument}
+                                onSelectDocument={setSelectedDocument}
+                                onClose={() => removeWidget(widget.id)}
+                            />
+                        </DraggableWidget>
+                    );
+                }
+
+                if (widget.id === 'email-config') {
+                    return (
+                        <DraggableWidget key={widget.id} widgetId={widget.id}>
+                            <EmailConfigWidget
+                                onClose={() => removeWidget(widget.id)}
+                            />
+                        </DraggableWidget>
+                    );
+                }
+
+                if (widget.id === 'quick-notes') {
+                    return (
+                        <DraggableWidget key={widget.id} widgetId={widget.id}>
+                            <QuickNotesWidget
+                                onClose={() => removeWidget(widget.id)}
+                            />
+                        </DraggableWidget>
+                    );
+                }
+
+                if (widget.id === 'ai-status-monitor') {
+                    return (
+                        <DraggableWidget key={widget.id} widgetId={widget.id}>
+                            <AIStatusMonitorWidget
+                                status={status}
+                                onClose={() => removeWidget(widget.id)}
+                            />
+                        </DraggableWidget>
+                    );
+                }
+
+                return null;
+            })}
 
             {/* Top center controls */}
             <div className="fixed top-6 left-1/2 -translate-x-1/2 flex gap-4">
@@ -363,10 +521,29 @@ export default function MainApp() {
                     >
                         🎤
                         {isListening && <PulseIndicator color="blue" />}
+                        {/* WebSocket connection indicator - only show when stable */}
+                        {!isWebSocketConnecting && (
+                            <>
+                                {!isWebSocketConnected && (
+                                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white/20" title="AI server not connected"></div>
+                                )}
+                                {isWebSocketConnected && (
+                                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white/20" title="AI server connected"></div>
+                                )}
+                            </>
+                        )}
+                        {isWebSocketConnecting && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full border-2 border-white/20 animate-pulse" title="Connecting to AI server..."></div>
+                        )}
                     </GlassButton>
                     {speechError && (
                         <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1 bg-red-500/90 text-white text-xs rounded-lg whitespace-nowrap z-50">
                             {speechError}
+                        </div>
+                    )}
+                    {websocketError && !isListening && (
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1 bg-orange-500/90 text-white text-xs rounded-lg whitespace-nowrap z-50 max-w-xs">
+                            {websocketError}
                         </div>
                     )}
                 </div>

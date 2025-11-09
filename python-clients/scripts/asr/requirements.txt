@@ -1,0 +1,4 @@
+grpcio>=1.54.0
+protobuf>=4.21.0
+pyaudio>=0.2.13
+keyboard>=0.13.5
