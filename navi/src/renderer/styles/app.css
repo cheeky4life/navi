@@ -1,60 +1,119 @@
-* {
-    box-sizing: border-box;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply m-0 p-0 w-screen h-screen overflow-hidden bg-transparent text-white;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    }
 }
 
-body {
-    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-    color: #e2e8f0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
-    margin: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    padding: 20px;
+#root {
+    @apply w-screen h-screen;
 }
 
 .app-container {
-    background: rgba(30, 41, 59, 0.8);
-    backdrop-filter: blur(20px);
-    border-radius: 24px;
-    padding: 32px;
-    width: 100%;
-    max-width: 700px;
-    min-height: 600px;
+    @apply w-screen h-screen;
+    background: linear-gradient(135deg,
+            rgba(29, 78, 216, 0.05),
+            rgba(147, 51, 234, 0.05),
+            rgba(236, 72, 153, 0.05));
+    @apply p-6;
+}
+
+/* Document List */
+.documents-panel {
+    background: rgba(30, 41, 59, 0.4);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 20px;
+}
+
+.documents-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 0 10px;
+}
+
+.documents-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.document-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.action-button {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.action-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.document-list {
     display: flex;
     flex-direction: column;
-    box-shadow: 
-        0 0 60px rgba(99, 102, 241, 0.2),
-        0 20px 40px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    gap: 8px;
 }
 
-/* Header Section */
-.header {
-    text-align: center;
-    margin-bottom: 24px;
+.document-item {
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
-.logo-section {
-    position: relative;
-    display: inline-block;
+.document-item:hover {
+    background: rgba(255, 255, 255, 0.1);
 }
 
-.logo-glow {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100px;
-    height: 100px;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
-    animation: glow 3s ease-in-out infinite;
+.document-item-title {
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+}
+
+.document-item-date {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Chat Interface */
+.chat-interface {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 20px;
 }
 
 @keyframes glow {
-    0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
-    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+
+    0%,
+    100% {
+        opacity: 0.5;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.1);
+    }
 }
 
 .app-title {
@@ -88,7 +147,9 @@ body {
 /* Status Indicator */
 .status-indicator {
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
+    padding: 10px 20px;
+    color: rgba(255, 255, 255, 0.6);
     margin-bottom: 20px;
     padding: 12px 24px;
     background: rgba(15, 23, 42, 0.6);
@@ -114,8 +175,17 @@ body {
 }
 
 @keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.2); opacity: 0.8; }
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
 }
 
 .status-icon {
@@ -310,8 +380,15 @@ body {
 }
 
 @keyframes pulse-red {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-    50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+
+    50% {
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+    }
 }
 
 .command-input {
@@ -364,15 +441,15 @@ body {
         padding: 24px;
         min-height: 500px;
     }
-    
+
     .app-title {
         font-size: 2.5rem;
     }
-    
+
     .feature-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .user-message,
     .ai-message {
         max-width: 90%;

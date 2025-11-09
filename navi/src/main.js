@@ -1,6 +1,7 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import { setupAuthHandlers } from './auth.js';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -8,19 +9,60 @@ if (started) {
 }
 
 const createWindow = () => {
+  // Get primary display dimensions
+  const { screen } = require('electron');
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.workAreaSize;
+
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 700,
-    minWidth: 600,
-    minHeight: 500,
-    backgroundColor: '#0f172a',
+    width,
+    height,
+    x: 0,
+    y: 0,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    hasShadow: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
     },
+  });
+
+  // Start with window fully interactive (for login page)
+  mainWindow.setIgnoreMouseEvents(false);
+
+  // Handle window interactivity based on page state
+  mainWindow.webContents.on('dom-ready', () => {
+    mainWindow.webContents.executeJavaScript(`
+      (function() {
+        function updateWindowInteractivity() {
+          const isMainApp = document.querySelector('[data-main-app]');
+          
+          if (isMainApp) {
+            // Main app: use click-through with interactive areas
+            function handleMouseMove(e) {
+              const shouldCatch = e.target.closest('.interactive-area');
+              window.electron.setIgnoreMouseEvents(!shouldCatch);
+            }
+            document.addEventListener('mousemove', handleMouseMove);
+          } else {
+            // Login page: always interactive
+            window.electron.setIgnoreMouseEvents(false);
+          }
+        }
+        
+        // Initial check
+        updateWindowInteractivity();
+        
+        // Watch for changes (e.g., when switching from login to main app)
+        const observer = new MutationObserver(updateWindowInteractivity);
+        observer.observe(document.body, { childList: true, subtree: true });
+      })();
+    `);
   });
 
   // and load the index.html of the app.
@@ -32,19 +74,61 @@ const createWindow = () => {
 
   // Open the DevTools.
   mainWindow.webContents.openDevTools();
-  
+
   // Suppress autofill console warnings
   mainWindow.webContents.on('console-message', (event, level, message) => {
     if (message.includes('Autofill')) {
-      event.preventDefault();
+      // Note: preventDefault doesn't actually suppress console messages
+      // We can't suppress Chromium internal errors from JavaScript
     }
   });
+
 };
+
+// IPC handler for mouse events
+ipcMain.on('set-ignore-mouse-events', (event, ignore) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  if (window) {
+    window.setIgnoreMouseEvents(ignore, { forward: true });
+  }
+});
+
+// IPC handler for file dialog
+ipcMain.handle('dialog:openFile', async (event, options = {}) => {
+  const { dialog } = require('electron');
+  const window = BrowserWindow.fromWebContents(event.sender);
+
+  const result = await dialog.showOpenDialog(window, {
+    title: options.title || 'Select a file',
+    filters: options.filters || [
+      { name: 'All Files', extensions: ['*'] },
+      { name: 'PDFs', extensions: ['pdf'] },
+      { name: 'Documents', extensions: ['pdf', 'doc', 'docx', 'txt', 'md'] },
+      { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] },
+    ],
+    properties: options.properties || ['openFile'],
+    ...options,
+  });
+
+  if (result.canceled) {
+    return { canceled: true, filePaths: [] };
+  }
+
+  return { canceled: false, filePaths: result.filePaths };
+});
+
+// Note: We don't set a permission handler here
+// This allows Electron's default behavior to work, which will show
+// the system's native permission dialog when getUserMedia() is called
+// The getUserMedia() call in the renderer process will trigger the permission prompt
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
+  // Setup authentication handlers
+  setupAuthHandlers();
+
   createWindow();
 
   // On OS X it's common to re-create a window in the app when the
