@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Cute AI assistant mascot with blush and human features -->
+  
+  <!-- Glow effects and gradients -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#6366f1;stop-opacity:0" />
+    </radialGradient>
+    <radialGradient id="blushGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ff9bbb;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#ff9bbb;stop-opacity:0" />
+    </radialGradient>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
+    </filter>
+  </defs>
+  
+  <!-- Background glow -->
+  <circle cx="50" cy="50" r="45" fill="url(#glow)" filter="url(#softGlow)" />
+  
+  <!-- Body (rounded shape) -->
+  <ellipse cx="50" cy="62" rx="30" ry="34" fill="#6366f1" opacity="0.95" />
+  
+  <!-- Head (slightly larger and more rounded) -->
+  <circle cx="50" cy="35" r="24" fill="#a5b4fc" />
+  
+  <!-- Cute bangs/hair tuft -->
+  <ellipse cx="50" cy="15" rx="10" ry="8" fill="#818cf8" />
+  <ellipse cx="43" cy="17" rx="6" ry="7" fill="#818cf8" />
+  <ellipse cx="57" cy="17" rx="6" ry="7" fill="#818cf8" />
+  
+  <!-- Blush on cheeks (rosy) -->
+  <ellipse cx="35" cy="38" rx="5" ry="3.5" fill="url(#blushGradient)" />
+  <ellipse cx="65" cy="38" rx="5" ry="3.5" fill="url(#blushGradient)" />
+  
+  <!-- Eyes (bigger, more expressive anime style) -->
+  <ellipse cx="42" cy="32" rx="5" ry="7" fill="#0f172a" />
+  <ellipse cx="58" cy="32" rx="5" ry="7" fill="#0f172a" />
+  
+  <!-- Eye highlights (bigger sparkles for cuteness) -->
+  <ellipse cx="43.5" cy="30" rx="2" ry="2.5" fill="white" />
+  <ellipse cx="59.5" cy="30" rx="2" ry="2.5" fill="white" />
+  <circle cx="41" cy="34" r="0.8" fill="white" opacity="0.7" />
+  <circle cx="57" cy="34" r="0.8" fill="white" opacity="0.7" />
+  
+  <!-- Eyebrows (adds expression) -->
+  <path d="M 37 26 Q 42 24 47 26" stroke="#6366f1" stroke-width="1.5" fill="none" stroke-linecap="round" />
+  <path d="M 53 26 Q 58 24 63 26" stroke="#6366f1" stroke-width="1.5" fill="none" stroke-linecap="round" />
+  
+  <!-- Cute smile (wider and happier) -->
+  <path d="M 40 42 Q 50 48 60 42" stroke="#0f172a" stroke-width="2" fill="none" stroke-linecap="round" />
+  
+  <!-- Little mouth highlight -->
+  <circle cx="50" cy="45" r="1" fill="#ff9bbb" opacity="0.5" />
+  
+  <!-- Cute antenna with orb (more prominent) -->
+  <line x1="50" y1="12" x2="50" y2="4" stroke="#a5b4fc" stroke-width="2.5" stroke-linecap="round" />
+  <circle cx="50" cy="4" r="4" fill="#c084fc" />
+  <circle cx="50" cy="4" r="6" fill="#c084fc" opacity="0.3" filter="url(#softGlow)" />
+  <circle cx="51" cy="3" r="1.5" fill="#fff" opacity="0.8" />
+  
+  <!-- Arms (more expressive, waving pose) -->
+  <path d="M 23 62 Q 18 58 16 62" stroke="#818cf8" stroke-width="6" fill="none" stroke-linecap="round" />
+  <path d="M 77 62 Q 82 58 84 62" stroke="#818cf8" stroke-width="6" fill="none" stroke-linecap="round" />
+  
+  <!-- Little hands -->
+  <circle cx="16" cy="62" r="3" fill="#a5b4fc" />
+  <circle cx="84" cy="62" r="3" fill="#a5b4fc" />
+  
+  <!-- Heart on body (adds personality) -->
+  <path d="M 50 68 L 47 72 Q 50 75 50 75 Q 50 75 53 72 Z M 47 72 Q 45 70 45 68 Q 45 66 47 66 Q 48 66 50 68 Q 52 66 53 66 Q 55 66 55 68 Q 55 70 53 72" fill="#ff9bbb" opacity="0.6" />
+  
+  <!-- Sparkles around (kawaii effect) -->
+  <circle cx="20" cy="25" r="1.5" fill="#c084fc" opacity="0.7" />
+  <circle cx="80" cy="30" r="1" fill="#a78bfa" opacity="0.7" />
+  <circle cx="25" cy="80" r="1" fill="#818cf8" opacity="0.6" />
+  <circle cx="75" cy="75" r="1.5" fill="#c084fc" opacity="0.6" />
+</svg>
