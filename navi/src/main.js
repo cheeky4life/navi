@@ -1,6 +1,10 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -8,26 +12,29 @@ if (started) {
 }
 
 const createWindow = () => {
+  // Get screen dimensions
   const { screen } = require('electron');
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
   
+  // Calculate window dimensions and position
   const windowWidth = Math.floor(screenWidth * 0.6); // 60% of screen width
   const windowHeight = 80; // Thin bar height
-  const x = Math.floor((screenWidth - windowWidth) / 2); // Center horizontally
-  const y = Math.floor(screenHeight * 0.05); // 5% from top
-  
+  const xPosition = Math.floor((screenWidth - windowWidth) / 2); // Center horizontally
+  const yPosition = Math.floor(screenHeight * 0.05); // 5% from top
+
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: windowWidth,
     height: windowHeight,
-    x: x,
-    y: y,
+    x: xPosition,
+    y: yPosition,
     transparent: true,
     frame: false,
     backgroundColor: '#00000000',
-    alwaysOnTop: true,
     resizable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -42,16 +49,6 @@ const createWindow = () => {
   } else {
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
-
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools();
-  
-  // Suppress autofill console warnings
-  mainWindow.webContents.on('console-message', (event, level, message) => {
-    if (message.includes('Autofill')) {
-      event.preventDefault();
-    }
-  });
 
   // Window control handlers
   ipcMain.on('window-minimize', () => {
@@ -68,6 +65,15 @@ const createWindow = () => {
 
   ipcMain.on('window-close', () => {
     mainWindow.close();
+  });
+
+  // Handler to get ElevenLabs credentials
+  ipcMain.handle('get-elevenlabs-key', () => {
+    return process.env.ELEVENLABS_API_KEY || null;
+  });
+
+  ipcMain.handle('get-elevenlabs-agent-id', () => {
+    return process.env.ELEVENLABS_AGENT_ID || null;
   });
 
   return mainWindow;
