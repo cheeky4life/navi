@@ -86,7 +86,7 @@ const createWindow = () => {
       const tempPath = path.join(app.getPath('temp'), `audio_${Date.now()}.webm`);
       fs.writeFileSync(tempPath, buffer);
 
-      // Transcribe with Whisper (force English language)
+          // Transcribe with Whisper (force English language)
       const transcription = await openai.audio.transcriptions.create({
         file: fs.createReadStream(tempPath),
         model: 'whisper-1',
@@ -151,6 +151,7 @@ const createWindow = () => {
       // Ensure focus on foreground window before typing
       // Use a single PowerShell session to type all characters quickly
       const escapedText = text.split('').map(char => {
+        // Special characters for SendKeys that need escaping
         const specialChars = {
           '+': '{+}',
           '^': '{^}',
@@ -162,12 +163,18 @@ const createWindow = () => {
           '}': '{}}',
           '[': '{[}',
           ']': '{]}',
+          '\n': '{ENTER}', // Newlines become Enter key
+          '\r': '', // Remove carriage returns
         };
         return specialChars[char] || char;
       }).join('');
       
-      // Escape single quotes for PowerShell
-      const psEscaped = escapedText.replace(/'/g, "''");
+      // Escape single quotes and backslashes for PowerShell
+      // Backslash needs to be doubled for PowerShell string literals
+      const psEscaped = escapedText
+        .replace(/\\/g, '\\\\')  // Escape backslashes first
+        .replace(/'/g, "''")     // Then escape single quotes
+        .replace(/"/g, '`"');    // Escape double quotes with backtick
       
       // Single PowerShell command that types everything at once with proper focus
       const script = `
@@ -256,6 +263,32 @@ const createWindow = () => {
       return { success: true, keys };
     } catch (error) {
       console.error('Press keys error:', error);
+      throw error;
+    }
+  });
+
+  // Mouse click handler
+  ipcMain.handle('click-mouse', async (event, x, y) => {
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execPromise = util.promisify(exec);
+      
+      // PowerShell script to move mouse and click at coordinates
+      const script = `
+        Add-Type -AssemblyName System.Windows.Forms
+        [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point(${x}, ${y})
+        Start-Sleep -Milliseconds 100
+        Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern void mouse_event(int flags, int dx, int dy, int cButtons, int extraInfo);' -Name MouseEvent -Namespace Win32
+        [Win32.MouseEvent]::mouse_event(0x02, 0, 0, 0, 0)
+        [Win32.MouseEvent]::mouse_event(0x04, 0, 0, 0, 0)
+      `.trim().replace(/\n\s+/g, '; ');
+      
+      console.log('Clicking at coordinates:', x, y);
+      await execPromise(`powershell -WindowStyle Hidden -Command "${script}"`, { windowsHide: true });
+      return { success: true, x, y };
+    } catch (error) {
+      console.error('Click mouse error:', error);
       throw error;
     }
   });

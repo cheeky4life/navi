@@ -15,4 +15,5 @@ contextBridge.exposeInMainWorld('electron', {
     openApplication: (appName) => ipcRenderer.invoke('open-application', appName),
     searchWeb: (query) => ipcRenderer.invoke('search-web', query),
     pressKeys: (keys) => ipcRenderer.invoke('press-keys', keys),
+    clickMouse: (x, y) => ipcRenderer.invoke('click-mouse', x, y),
 });
