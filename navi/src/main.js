@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
@@ -8,13 +8,26 @@ if (started) {
 }
 
 const createWindow = () => {
+  const { screen } = require('electron');
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+  
+  const windowWidth = Math.floor(screenWidth * 0.6); // 60% of screen width
+  const windowHeight = 80; // Thin bar height
+  const x = Math.floor((screenWidth - windowWidth) / 2); // Center horizontally
+  const y = Math.floor(screenHeight * 0.05); // 5% from top
+  
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 700,
-    minWidth: 600,
-    minHeight: 500,
-    backgroundColor: '#0f172a',
+    width: windowWidth,
+    height: windowHeight,
+    x: x,
+    y: y,
+    transparent: true,
+    frame: false,
+    backgroundColor: '#00000000',
+    alwaysOnTop: true,
+    resizable: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -39,6 +52,25 @@ const createWindow = () => {
       event.preventDefault();
     }
   });
+
+  // Window control handlers
+  ipcMain.on('window-minimize', () => {
+    mainWindow.minimize();
+  });
+
+  ipcMain.on('window-maximize', () => {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  });
+
+  ipcMain.on('window-close', () => {
+    mainWindow.close();
+  });
+
+  return mainWindow;
 };
 
 // This method will be called when Electron has finished
